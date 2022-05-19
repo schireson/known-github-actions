@@ -1,0 +1,159 @@
+name: Githash-Based ArgoCD Deployment Workflow
+
+#  This workflow will update the ArgoCD config's image tag with
+#  the given docker image tag, and either push directly to the
+#  specified branch OR create a pull request describing the changes
+#  between the previous version and new version.
+#
+#  This workflow assumes that your argocd config resides on a branch
+#  _without_ branch protection rules.
+#
+#  The PR feature will push to a branch containing the environment
+#  name and the app name. If a PR already exists with the same name,
+#  changes will be force pushed. This prevents PRs from piling up.
+#
+#  The PR also contains a changelog. Changes are detected using
+#  `git log`. This is why your docker image tagging strategy needs
+#  to be git hash based, otherwise this step will fail.
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: >
+          The name of the target environment. This is used
+          for informational purposes only. No logic is determined
+          by the environment name.
+
+      app-name:
+        required: true
+        type: string
+        description: >
+          The name of the application being updated. This is used
+          for informational purposes only. No logic is determined
+          by the app name.
+
+      argocd-branch:
+        required: false
+        type: string
+        default: argocd
+        description: >
+          The name of the branch where the ArgoCD config resides.
+          The default value is 'argocd'. This branch cannot have
+          branch protection rules on it if the `make-pr` input is
+          false.
+
+      make-pr:
+        required: false
+        type: boolean
+        default: true
+        description: >
+          Describes whether to push directly to the branch or
+          make a PR. If this value is false, an SSH_KEY secret
+          must be provided.
+
+      docker-image-tag:
+        required: true
+        type: string
+        description: >
+          The git hash of the latest docker image tag. We will
+          be updating ArgoCD / EKS to this version.
+
+      argocd-config-location:
+        required: true
+        type: string
+        description: >
+          The relative path of the ArgoCD configuration file.
+
+      argocd-config-key:
+        required: false
+        type: string
+        default: image.tag
+        description: >
+          The name/yq-path of the key being updated. This defaults
+          to 'image.tag'.
+
+      runs-on:
+        required: false
+        type: string
+        default: ubuntu-latest
+        description: >
+          The name of the environment to run on. This defaults to
+          'ubuntu-latest'
+
+    secrets:
+      SSH_KEY:
+        required: false
+        description: >
+          An SSH private key for authenticating with Github. This
+          only needs to be passed in if we push directly to git.
+          We push directly to git when 'make-pr' is false.
+
+jobs:
+  deploy:
+    runs-on: ${{ inputs.runs-on }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - uses: actions/checkout@v3
+      if: ${{ inputs.make-pr == false }}
+      with:
+        ref: ${{ inputs.argocd-branch }}
+        fetch-depth: 0
+        ssh-key: ${{ secrets.SSH_KEY }}
+    - uses: actions/checkout@v3
+      if: ${{ inputs.make-pr == true }}
+      with:
+        ref: ${{ inputs.argocd-branch }}
+        fetch-depth: 0
+    - uses: chrisdickinson/setup-yq@latest
+      with:
+        yq-version: v4.25.1
+    - name: Get previous version
+      id: previous-version
+      run: |
+        PREV_VERSION=$(yq '(.helm.parameters.[] | select(.name == "${{ inputs.argocd-config-key }}").value)' ${{ inputs.argocd-config-location }} | tr -d '\n')
+        echo "::set-output name=previous-version::$PREV_VERSION"
+    - name: Create commit
+      run: |
+        yq -i '(.helm.parameters.[] | select(.name == "${{ inputs.argocd-config-key }}").value) = "${{ inputs.docker-image-tag }}"' ${{ inputs.argocd-config-location }}
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        git add ${{ inputs.argocd-config-location }}
+        git commit -m 'deploy: [${{ inputs.environment }}] ${{ inputs.app-name }} ${{ steps.previous-version.outputs.previous-version }} -> ${{ inputs.docker-image-tag }}'
+    - name: Push to ${{ inputs.argocd-branch }} branch
+      if: ${{ inputs.make-pr == false }}
+      run: git push origin ${{ inputs.argocd-branch }}
+    - name: Get git log
+      if: ${{ inputs.make-pr == true }}
+      id: git-log
+      run: |
+        LOG_MESSAGE=$(git shortlog ${{ steps.previous-version.outputs.previous-version }}..${{ inputs.docker-image-tag }})
+        LOG_MESSAGE="${LOG_MESSAGE//'%'/'%25'}"
+        LOG_MESSAGE="${LOG_MESSAGE//$'\n'/'%0A'}"
+        LOG_MESSAGE="${LOG_MESSAGE//$'\r'/'%0D'}"
+        echo "::set-output name=git-log::$LOG_MESSAGE"
+    - name: Create Pull Request
+      if: ${{ inputs.make-pr == true }}
+      id: pr
+      uses: peter-evans/create-pull-request@v4
+      with:
+        signoff: false
+        branch: deploy-${{ inputs.environment }}-${{ inputs.app-name }}
+        delete-branch: true
+        title: '🚀 [${{ inputs.environment }}] ${{ inputs.app-name }} ${{ steps.previous-version.outputs.previous-version }} -> ${{ inputs.docker-image-tag }}'
+        body: |
+          This deployment PR was automatically created by Github Actions.
+
+          ## Changes since last deployment
+
+          ${{ steps.git-log.outputs.git-log }}
+        labels: |
+          deployment
+          ${{ inputs.app-name }}
+          ${{ inputs.environment }}
+        draft: false
+        base: ${{ inputs.argocd-branch }}

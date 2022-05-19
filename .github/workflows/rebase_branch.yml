@@ -1,0 +1,57 @@
+name: Rebase Branch Workflow
+
+#  This workflow will rebase the "source" branch onto the "target" branch.
+#
+#  Note, this workflow force pushes. These actions can be destructive.
+#  Use at your own risk.
+
+on:
+  workflow_call:
+    inputs:
+      target-branch:
+        required: false
+        type: string
+        default: main
+        description: >
+          The name of the target branch to rebase off of. Defaults to main.
+
+      source-branch:
+        required: true
+        type: string
+        description: >
+          The name of the source branch. This branch's history
+          will be rebased on top of the target-branch.
+
+      runs-on:
+        required: false
+        type: string
+        default: ubuntu-latest
+        description: >
+          The name of the environment to run on. This defaults to
+          'ubuntu-latest'
+
+    secrets:
+      SSH_KEY:
+        required: false
+        description: >
+          An SSH private key for authenticating with Github. This
+          is needed to push/write to git.
+
+jobs:
+  deploy:
+    runs-on: ${{ inputs.runs-on }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        ref: ${{ inputs.source-branch }}
+        fetch-depth: 0
+        ssh-key: ${{ secrets.SSH_KEY }}
+    - name: Rebase on main and push
+      run: |
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        git rebase origin/${{ inputs.target-branch }}
+        git push origin ${{ inputs.source-branch }} -f
