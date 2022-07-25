@@ -1,0 +1,100 @@
+name: Trigger Airflow DAG
+
+#  This workflow will trigger an airflow DAG and wait for completion or timeout.
+#  If any tasks are failed, the process will raise an Exception.
+#  If the task times out, the process will raise an Exception.
+#  Otherwise, the task will exit gracefully.
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        required: false
+        type: string
+        default: 3.9
+        description: >
+          The version of python to use in this workflow
+
+      airflow-url:
+        required: true
+        type: string
+        description: >
+          The URL of the airflow 2.0 cluster.
+
+      airflow-username:
+        required: true
+        type: string
+        description: >
+          The username to authenticate against the API with.
+
+      airflow-dag-id:
+        required: true
+        type: string
+        description: >
+          The DAG ID of the DAG you would like to trigger.
+
+      enable-polling:
+        required: false
+        type: string
+        default: true
+        description: >
+          If true, the process will poll for the status of the DAG run.
+
+      polling-timeout:
+        required: false
+        type: string
+        default: 600
+        description: >
+          The number of seconds to wait for tasks in DAG to complete.
+
+      polling-interval:
+        required: false
+        type: string
+        default: 5
+        description: >
+          The number of seconds to wait between polling requests.
+
+      runs-on:
+        required: false
+        type: string
+        default: ubuntu-latest
+        description: >
+          The name of the environment to run on. This defaults to
+          'ubuntu-latest'
+
+    secrets:
+      airflow-password:
+        required: true
+        description: >
+          The password to authenticate against the API with.
+
+jobs:
+  deploy:
+    runs-on: ${{ inputs.runs-on }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        repository: 'schireson/known-github-actions'
+    - uses: actions/setup-python@v3
+      id: setup-python
+      with:
+        python-version: ${{ inputs.python-version }}
+      env:
+        PYTHON_CONFIGURE_OPTS: --enable-shared --enable-optimizations
+    - name: Install python dependencies
+      run: |
+        pip install requests
+    - name: Trigger Airflow DAG and Poll
+      run: |
+        python scripts/trigger_airflow_dag.py
+      env:
+        AIRFLOW_USERNAME: ${{ inputs.airflow-username }}
+        AIRFLOW_PASSWORD: ${{ secrets.airflow-password }}
+        AIRFLOW_BASE_PATH: ${{ inputs.airflow-url }}
+        AIRFLOW_DAG_ID: ${{ inputs.airflow-dag-id }}
+        POLL_FOR_COMPLETION: ${{ inputs.enable-polling }}
+        POLLING_TIMEOUT: ${{ inputs.polling-timeout }}
+        POLLING_INTERVAL: ${{ inputs.polling-interval }}
