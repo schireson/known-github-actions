@@ -24,7 +24,7 @@ jobs:
       - id: runner-type
         run: |
           if [ -z ${{ secrets.SELF_HOSTED_RUNNER }} ]; then
-            echo "::set-output name=runner-type::ubuntu-latest"
+            echo "runner-type=ubuntu-latest" >> $GITHUB_OUTPUT
           else
-            echo "::set-output name=runner-type::self-hosted"
+            echo "runner-type=self-hosted" >> $GITHUB_OUTPUT
           fi
