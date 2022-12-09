@@ -1,0 +1,95 @@
+name: Reusable Docker Push Workflow
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        required: false
+        type: string
+        default: ubuntu-latest
+        description: >
+          The name of the environment to run on. This defaults to
+          'ubuntu-latest'
+      build:
+        required: false
+        type: boolean
+        default: true
+        description: Whether to run "make build"
+      push:
+        required: false
+        type: boolean
+        default: true
+        description: Whether to run "make push"
+    outputs:
+      image-tag:
+        description: "The image tag"
+        value: ${{ jobs.push.outputs.image-tag }}
+    secrets:
+      ECR_AWS_ACCESS_KEY_ID:
+        required: true
+      ECR_AWS_SECRET_ACCESS_KEY:
+        required: true
+      ARTIFACTORY_AWS_ACCESS_KEY_ID:
+        required: true
+      ARTIFACTORY_AWS_SECRET_ACCESS_KEY:
+        required: true
+jobs:
+  push:
+    runs-on: ${{ inputs.runs-on }}
+    defaults:
+      run:
+        shell: bash
+    outputs:
+      image-tag: ${{ steps.get-image-tag.outputs.image-tag }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Get image tag
+        id: get-image-tag
+        run: |
+          IMAGE_TAG=$(git rev-parse --short=8 HEAD)
+          echo "::set-output name=image-tag::$IMAGE_TAG"
+      - name: Configure Artifactory AWS Credentials
+        if: ${{ inputs.runs-on != 'self-hosted' }}
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.ARTIFACTORY_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ARTIFACTORY_AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - name: Whitelist Artifactory
+        if: ${{ inputs.runs-on != 'self-hosted' }}
+        env:
+          ALLOW: 1
+          CLEANUP: 0
+          USE_DOCKER_IP: 0
+          JOB_NAME: Docker Push
+        run: pip install backoff && python ${{ github.workspace }}/.github/allow_artifactory.py
+      - name: Build Docker Images
+        if: ${{ inputs.build }}
+        run: |
+          make build
+      - name: Configure ECR AWS Credentials
+        if: ${{ inputs.runs-on != 'self-hosted' }}
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ECR_AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - name: Push Docker Images
+        if: ${{ inputs.push }}
+        run: |
+          make docker-login-server
+          make push
+      - name: Configure Artifactory AWS Credentials Again
+        if: ${{ always() && inputs.runs-on != 'self-hosted' }}
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.ARTIFACTORY_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ARTIFACTORY_AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - name: De-Whitelist Artifactory
+        if: ${{ always() && inputs.runs-on != 'self-hosted' }}
+        env:
+          ALLOW: 0
+          CLEANUP: 1
+          USE_DOCKER_IP: 0
+          JOB_NAME: Docker Push
+        run: python ${{ github.workspace }}/.github/allow_artifactory.py

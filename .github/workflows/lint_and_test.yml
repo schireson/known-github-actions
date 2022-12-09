@@ -1,0 +1,230 @@
+name: Reusable lint and test workflow
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        required: true
+        type: string
+        description: >
+          The sub-directory to run commands out of
+      python-versions:
+        required: false
+        type: string
+        default: >-
+          ["3.9"]
+        description: >
+          The python versions to utilize in workflow.
+          Can be a json formatted list. Each python version will run
+          in a github matrix.
+      test:
+        required: false
+        type: boolean
+        default: true
+        description: Whether to run "make test"
+      whitelist:
+        required: false
+        type: boolean
+        default: true
+        description: Whether to whitelist artifactory
+      lint:
+        required: false
+        type: boolean
+        default: true
+        description: Whether to run "make lint"
+      coverage:
+        required: false
+        type: boolean
+        default: true
+        description: Whether to submit coverage
+      check-python-license:
+        required: false
+        type: boolean
+        default: true
+        description: Whether to check the python licenses
+      ecr-credentials:
+        required: false
+        type: boolean
+        default: false
+        description: Whether to setup ECR credentials
+      runs-on:
+        required: false
+        type: string
+        default: ubuntu-latest
+        description: >
+          The name of the environment to run on. This defaults to
+          'ubuntu-latest'
+    secrets:
+      DOCKER_USER:
+        required: true
+      DOCKER_PASSWORD:
+        required: true
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      ECR_AWS_ACCESS_KEY_ID:
+        required: false
+      ECR_AWS_SECRET_ACCESS_KEY:
+        required: false
+jobs:
+  test:
+    runs-on: ${{ inputs.runs-on }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ inputs.working-directory }}
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        credentials:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      postgres:
+        image: postgres:11.12
+        env:
+          POSTGRES_DB: dev
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+        credentials:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+    strategy:
+      matrix:
+        python_version: ${{fromJson(inputs.python-versions)}}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3
+        id: setup-python
+        with:
+          python-version: ${{ matrix.python_version }}
+        env:
+          PYTHON_CONFIGURE_OPTS: --enable-shared --enable-optimizations
+
+      - name: Configure AWS Credentials
+        if: ${{ inputs.runs-on != 'self-hosted' }}
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - name: Whitelist Artifactory
+        if: ${{ inputs.runs-on != 'self-hosted' && inputs.whitelist }}
+        id: whitelist-artifactory
+        env:
+          ALLOW: 1
+          CLEANUP: 0
+          USE_DOCKER_IP: 0
+          JOB_NAME: Run Tests
+        run: pip install backoff && python ${{ github.workspace }}/.github/allow_artifactory.py
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+      - name: Load cached venv
+        uses: actions/cache@v3
+        with:
+          path: ${{ inputs.working-directory }}/.venv
+          key: venv-${{ runner.os }}-${{ inputs.runs-on }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+      - name: Install dependencies
+        run: make install
+
+      - name: Configure ECR AWS Credentials
+        if: ${{ inputs.runs-on != 'self-hosted' && inputs.ecr-credentials }}
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ECR_AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Lint
+        if: ${{ inputs.lint }}
+        run: |
+          source .venv/bin/activate
+          make lint
+
+      - name: Test
+        if: ${{ inputs.test }}
+        run: |
+          source .venv/bin/activate
+          make test
+        env:
+          PMR_POSTGRES_CI_PORT: 5432
+          COVERAGE_PROCESS_START: pyproject.toml
+      - name: Store test result artifacts
+        if: ${{ inputs.test && inputs.coverage }}
+        uses: actions/upload-artifact@v3
+        with:
+          path: ${{ inputs.working-directory }}/coverage.xml
+
+      - name: De-Whitelist Artifactory
+        if: ${{ always() && inputs.runs-on != 'self-hosted' && inputs.whitelist }}
+        env:
+          ALLOW: 0
+          CLEANUP: 1
+          USE_DOCKER_IP: 0
+          JOB_NAME: Run Tests
+        run: python ${{ github.workspace }}/.github/allow_artifactory.py
+
+      - name: Run coverage
+        if: ${{ inputs.coverage }}
+        env:
+          COVERALLS_FLAG_NAME: run-${{ inputs.working-directory }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COVERALLS_PARALLEL: true
+        run: |
+          pip install tomli coveralls
+          coveralls --service=github
+
+      - name: Check python license
+        if: ${{ inputs.check-python-license }}
+        run: |
+          pip install pip-licenses
+
+          wget -O jq https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
+          chmod +x ./jq
+          sudo cp jq /usr/bin
+
+          output=$(pip-licenses -f json --with-authors | jq '
+            .[]
+            | select(
+                .License
+                | contains("MIT")
+                  or contains("BSD")
+                  or contains("Apache")
+                  or contains("LGPL")
+                  or contains("Artistic License")
+                  or contains("HPND")
+                  or contains("ISCL")
+                  or contains("MPL 2.0")
+                  or contains("Public Domain")
+                  or contains("WTFPL")
+                  or contains("Zope Public")
+                  or contains("Python Software Foundation")
+                | not
+              )
+            | select (
+                .Name
+                | startswith("ma-")
+                or startswith("media-activation-")
+                or IN("strapp")  # Internal packages
+                or IN("ptpython")  # Improperly identified packages
+                | not
+              )
+            | select (.Author == "Known" | not)
+            ')
+          if [[ $output = "" ]]; then
+            echo 'No violations!'
+          else
+            echo "$output" | jq
+            echo "Please read our Open-Source Software License Policy on your VPN"
+            echo https://engineering.docs.known.is/engineering/open-source-software-license-policy/
+            exit 1
+          fi
