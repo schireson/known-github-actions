@@ -62,6 +62,10 @@ jobs:
           USE_DOCKER_IP: 0
           JOB_NAME: Docker Push
         run: pip install backoff && python ${{ github.workspace }}/.github/allow_artifactory.py
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Expose GitHub Runtime
+        uses: crazy-max/ghaction-github-runtime@v2
       - name: Build Docker Images
         if: ${{ inputs.build }}
         run: |
