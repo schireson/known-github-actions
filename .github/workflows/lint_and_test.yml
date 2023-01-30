@@ -21,11 +21,6 @@ on:
         type: boolean
         default: true
         description: Whether to run "make test"
-      whitelist:
-        required: false
-        type: boolean
-        default: true
-        description: Whether to whitelist artifactory
       lint:
         required: false
         type: boolean
@@ -54,17 +49,9 @@ on:
           The name of the environment to run on. This defaults to
           'ubuntu-latest'
     secrets:
-      DOCKER_USER:
-        required: true
-      DOCKER_PASSWORD:
-        required: true
-      AWS_ACCESS_KEY_ID:
-        required: true
-      AWS_SECRET_ACCESS_KEY:
-        required: true
-      ECR_AWS_ACCESS_KEY_ID:
+      POETRY_HTTP_BASIC_SCHIRESON_USERNAME:
         required: false
-      ECR_AWS_SECRET_ACCESS_KEY:
+      POETRY_HTTP_BASIC_SCHIRESON_PASSWORD:
         required: false
 jobs:
   test:
@@ -78,9 +65,6 @@ jobs:
         image: redis
         ports:
           - 6379:6379
-        credentials:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
       postgres:
         image: postgres:11.12
         env:
@@ -90,9 +74,6 @@ jobs:
         ports:
           - 5432:5432
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
-        credentials:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
     strategy:
       matrix:
         python_version: ${{fromJson(inputs.python-versions)}}
@@ -104,23 +85,6 @@ jobs:
           python-version: ${{ matrix.python_version }}
         env:
           PYTHON_CONFIGURE_OPTS: --enable-shared --enable-optimizations
-
-      - name: Configure AWS Credentials
-        if: ${{ inputs.runs-on != 'self-hosted' }}
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-      - name: Whitelist Artifactory
-        if: ${{ inputs.runs-on != 'self-hosted' && inputs.whitelist }}
-        id: whitelist-artifactory
-        env:
-          ALLOW: 1
-          CLEANUP: 0
-          USE_DOCKER_IP: 0
-          JOB_NAME: Run Tests
-        run: pip install backoff && python ${{ github.workspace }}/.github/allow_artifactory.py
 
       - name: Install Poetry
         uses: snok/install-poetry@v1
@@ -134,15 +98,10 @@ jobs:
           path: ${{ inputs.working-directory }}/.venv
           key: venv-${{ runner.os }}-${{ inputs.runs-on }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
       - name: Install dependencies
+        env:
+          POETRY_HTTP_BASIC_SCHIRESON_USERNAME: ${{ secrets.POETRY_HTTP_BASIC_SCHIRESON_USERNAME }}
+          POETRY_HTTP_BASIC_SCHIRESON_PASSWORD: ${{ secrets.POETRY_HTTP_BASIC_SCHIRESON_PASSWORD }}
         run: make install
-
-      - name: Configure ECR AWS Credentials
-        if: ${{ inputs.runs-on != 'self-hosted' && inputs.ecr-credentials }}
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.ECR_AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
 
       - name: Lint
         if: ${{ inputs.lint }}
@@ -163,15 +122,6 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           path: ${{ inputs.working-directory }}/coverage.xml
-
-      - name: De-Whitelist Artifactory
-        if: ${{ always() && inputs.runs-on != 'self-hosted' && inputs.whitelist }}
-        env:
-          ALLOW: 0
-          CLEANUP: 1
-          USE_DOCKER_IP: 0
-          JOB_NAME: Run Tests
-        run: python ${{ github.workspace }}/.github/allow_artifactory.py
 
       - name: Run coverage
         if: ${{ inputs.coverage }}

@@ -2,6 +2,11 @@ name: Reusable Docker Push Workflow
 on:
   workflow_call:
     inputs:
+      working-directory:
+        required: true
+        type: string
+        description: >
+          The sub-directory to run commands out of
       runs-on:
         required: false
         type: string
@@ -28,16 +33,17 @@ on:
         required: true
       ECR_AWS_SECRET_ACCESS_KEY:
         required: true
-      ARTIFACTORY_AWS_ACCESS_KEY_ID:
-        required: true
-      ARTIFACTORY_AWS_SECRET_ACCESS_KEY:
-        required: true
+      POETRY_HTTP_BASIC_SCHIRESON_USERNAME:
+        required: false
+      POETRY_HTTP_BASIC_SCHIRESON_PASSWORD:
+        required: false
 jobs:
   push:
     runs-on: ${{ inputs.runs-on }}
     defaults:
       run:
         shell: bash
+        working-directory: ${{ inputs.working-directory }}
     outputs:
       image-tag: ${{ steps.get-image-tag.outputs.image-tag }}
     steps:
@@ -47,27 +53,15 @@ jobs:
         run: |
           IMAGE_TAG=$(git rev-parse --short=8 HEAD)
           echo "::set-output name=image-tag::$IMAGE_TAG"
-      - name: Configure Artifactory AWS Credentials
-        if: ${{ inputs.runs-on != 'self-hosted' }}
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.ARTIFACTORY_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.ARTIFACTORY_AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-      - name: Whitelist Artifactory
-        if: ${{ inputs.runs-on != 'self-hosted' }}
-        env:
-          ALLOW: 1
-          CLEANUP: 0
-          USE_DOCKER_IP: 0
-          JOB_NAME: Docker Push
-        run: pip install backoff && python ${{ github.workspace }}/.github/allow_artifactory.py
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Expose GitHub Runtime
         uses: crazy-max/ghaction-github-runtime@v2
       - name: Build Docker Images
         if: ${{ inputs.build }}
+        env:
+          POETRY_HTTP_BASIC_SCHIRESON_USERNAME: ${{ secrets.POETRY_HTTP_BASIC_SCHIRESON_USERNAME }}
+          POETRY_HTTP_BASIC_SCHIRESON_PASSWORD: ${{ secrets.POETRY_HTTP_BASIC_SCHIRESON_PASSWORD }}
         run: |
           make build
       - name: Configure ECR AWS Credentials
@@ -82,18 +76,3 @@ jobs:
         run: |
           make docker-login-server
           make push
-      - name: Configure Artifactory AWS Credentials Again
-        if: ${{ always() && inputs.runs-on != 'self-hosted' }}
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.ARTIFACTORY_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.ARTIFACTORY_AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-      - name: De-Whitelist Artifactory
-        if: ${{ always() && inputs.runs-on != 'self-hosted' }}
-        env:
-          ALLOW: 0
-          CLEANUP: 1
-          USE_DOCKER_IP: 0
-          JOB_NAME: Docker Push
-        run: python ${{ github.workspace }}/.github/allow_artifactory.py
