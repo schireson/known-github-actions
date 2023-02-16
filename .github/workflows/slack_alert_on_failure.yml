@@ -1,0 +1,25 @@
+name: Slack Alert on Failure
+
+on:
+  workflow_call:
+    secrets:
+      SLACK_WEBHOOK:
+        required: true
+        description: A Slack webhook for creating the alert.
+
+jobs:
+  alert-slack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: technote-space/workflow-conclusion-action@v3
+      - uses: ravsamhq/notify-slack-action@v1
+        if: env.WORKFLOW_CONCLUSION == 'failure'
+        with:
+          status: ${{ env.WORKFLOW_CONCLUSION }} # neutral, success, skipped, cancelled, timed_out, action_required, failure
+          notify_when: "failure"
+          notification_title: "{workflow} has failed."
+          message_format: "{emoji} *{workflow}* {status_message}. <{commit_url}|{commit_sha}> <{run_url}|View Run>"
+          footer: "Linked Repo <{repo_url}|{repo}>."
+          icon_failure: ":red_circle:"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}

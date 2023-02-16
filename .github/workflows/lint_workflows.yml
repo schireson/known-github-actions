@@ -1,0 +1,21 @@
+name: Lint Github Actions Workflows
+
+on:
+  workflow_call:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download actionlint
+        id: get_actionlint
+        run: bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+        shell: bash
+      - name: Check workflow files
+        # https://github.com/rhysd/actionlint/blob/main/docs/usage.md#example-error-annotation-on-github-actions
+        run: ${{ steps.get_actionlint.outputs.executable }} -format '{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}%0A```%0A{{replace $err.Snippet "\\n" "%0A"}}%0A```\n{{end}}' -ignore 'SC2016:' -ignore 'SC2086:'
+        shell: bash
