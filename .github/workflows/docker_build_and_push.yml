@@ -29,9 +29,7 @@ on:
         description: "The image tag"
         value: ${{ jobs.build-and-push.outputs.image-tag }}
     secrets:
-      ECR_AWS_ACCESS_KEY_ID:
-        required: true
-      ECR_AWS_SECRET_ACCESS_KEY:
+      ECR_PUSH_ROLE_ARN:
         required: true
       POETRY_HTTP_BASIC_SCHIRESON_USERNAME:
         required: false
@@ -40,6 +38,9 @@ on:
 jobs:
   build-and-push:
     runs-on: ${{ inputs.runs-on }}
+    permissions:
+      id-token: write
+      contents: read
     defaults:
       run:
         shell: bash
@@ -68,8 +69,8 @@ jobs:
         if: ${{ inputs.runs-on != 'self-hosted' }}
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.ECR_AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.ECR_PUSH_ROLE_ARN }}
+          role-session-name: ${{ github.run_id }}
           aws-region: us-east-1
       - name: Push Docker Images
         if: ${{ inputs.push }}
