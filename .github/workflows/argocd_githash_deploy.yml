@@ -127,12 +127,15 @@ jobs:
       - name: Push to ${{ inputs.argocd-branch }} branch
         if: ${{ inputs.make-pr == false }}
         run: git push origin ${{ inputs.argocd-branch }}
-      - name: Create changelog
-        uses: ./.github/actions/changelog
-        id: changelog
-        with:
-          from-tag: ${{ steps.previous-version.outputs.previous-version }}
-          to-tag: ${{ inputs.docker-image-tag }}
+      - name: Get git log
+        if: ${{ inputs.make-pr == true }}
+        id: git-log
+        run: |
+          LOG_MESSAGE=$(git shortlog ${{ steps.previous-version.outputs.previous-version }}..${{ inputs.docker-image-tag }})
+          LOG_MESSAGE="${LOG_MESSAGE//'%'/'%25'}"
+          LOG_MESSAGE="${LOG_MESSAGE//$'\n'/'%0A'}"
+          LOG_MESSAGE="${LOG_MESSAGE//$'\r'/'%0D'}"
+          echo "git-log=$LOG_MESSAGE" >> $GITHUB_OUTPUT
       - name: Create Pull Request
         if: ${{ inputs.make-pr == true }}
         id: pr
@@ -142,7 +145,12 @@ jobs:
           branch: deploy-${{ inputs.environment }}-${{ inputs.app-name }}
           delete-branch: true
           title: "🚀 [${{ inputs.environment }}] ${{ inputs.app-name }} ${{ steps.previous-version.outputs.previous-version }} -> ${{ inputs.docker-image-tag }}"
-          body: ${{ steps.changelog.outputs.changelog }}
+          body: |
+            This deployment PR was automatically created by Github Actions.
+
+            ## Changes since last deployment
+
+            ${{ steps.git-log.outputs.git-log }}
           labels: |
             deployment
             ${{ inputs.app-name }}
