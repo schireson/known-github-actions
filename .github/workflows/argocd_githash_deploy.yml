@@ -128,7 +128,7 @@ jobs:
         if: ${{ inputs.make-pr == false }}
         run: git push origin ${{ inputs.argocd-branch }}
       - name: Create changelog
-        uses: schireson/known-github-actions/.github/actions/changelog@main
+        uses: ./.github/actions/changelog
         id: changelog
         with:
           from-tag: ${{ steps.previous-version.outputs.previous-version }}
