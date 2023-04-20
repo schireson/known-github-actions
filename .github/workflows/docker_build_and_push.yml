@@ -75,5 +75,5 @@ jobs:
       - name: Push Docker Images
         if: ${{ inputs.push }}
         run: |
-          make docker-login-server
+          make docker-login
           make push
