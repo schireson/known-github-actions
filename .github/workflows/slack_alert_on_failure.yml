@@ -3,7 +3,7 @@ name: Slack Alert on Failure
 on:
   workflow_call:
     secrets:
-      SLACK_WEBHOOK:
+      SLACK_CI_ALERTS_WEBHOOK:
         required: true
         description: A Slack webhook for creating the alert.
 
@@ -22,4 +22,4 @@ jobs:
           footer: "Linked Repo <{repo_url}|{repo}>."
           icon_failure: ":red_circle:"
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_CI_ALERTS_WEBHOOK }}
