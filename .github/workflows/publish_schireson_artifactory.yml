@@ -1,0 +1,63 @@
+name: Publish Poetry Package To Schireson Artifactory
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        required: true
+        type: string
+        description: >
+          The sub-directory to run commands out of
+      python-version:
+        required: false
+        type: string
+        default: "3.10"
+        description: >
+          The python version to utilize in workflow.
+      runs-on:
+        required: false
+        type: string
+        default: ubuntu-latest
+        description: >
+          The name of the environment to run on. This defaults to
+          'ubuntu-latest'
+    secrets:
+      POETRY_HTTP_BASIC_SCHIRESON_USERNAME:
+        required: true
+      POETRY_HTTP_BASIC_SCHIRESON_PASSWORD:
+        required: true
+jobs:
+  publish:
+    runs-on: ${{ inputs.runs-on }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3
+        id: setup-python
+        with:
+          python-version: ${{ inputs.python-version }}
+        env:
+          PYTHON_CONFIGURE_OPTS: --enable-shared --enable-optimizations
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+      - name: Load cached venv
+        uses: actions/cache@v3
+        with:
+          path: ${{ inputs.working-directory }}/.venv
+          key: venv-${{ runner.os }}-${{ inputs.runs-on }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+      - name: Publish to Artifactory
+        env:
+          POETRY_REPOSITORIES_SCHIRESON_URL: https://artifactory.schireson.com/artifactory/api/pypi/pypi
+          POETRY_HTTP_BASIC_SCHIRESON_USERNAME: ${{ secrets.POETRY_HTTP_BASIC_SCHIRESON_USERNAME }}
+          POETRY_HTTP_BASIC_SCHIRESON_PASSWORD: ${{ secrets.POETRY_HTTP_BASIC_SCHIRESON_PASSWORD }}
+        run: |
+          poetry build
+          poetry publish -n --repository schireson 2>&1 | tee publish.log
+          OUTPUT=$(tail -n 1 publish.log)
+          grep -vq 'HTTP Error' <<< $OUTPUT || grep -q 'HTTP Error 404' <<< $OUTPUT
