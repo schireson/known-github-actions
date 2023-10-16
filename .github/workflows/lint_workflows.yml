@@ -2,6 +2,10 @@ name: Lint Github Actions Workflows
 
 on:
   workflow_call:
+    inputs:
+      options: 
+        type: string
+        default: ""
   pull_request:
     paths:
       - ".github/workflows/**"
@@ -17,5 +21,5 @@ jobs:
         shell: bash
       - name: Check workflow files
         # https://github.com/rhysd/actionlint/blob/main/docs/usage.md#example-error-annotation-on-github-actions
-        run: ${{ steps.get_actionlint.outputs.executable }} -format '{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}%0A```%0A{{replace $err.Snippet "\\n" "%0A"}}%0A```\n{{end}}' -ignore 'SC2016:' -ignore 'SC2086:'
+        run: ${{ steps.get_actionlint.outputs.executable }} -format '{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}%0A```%0A{{replace $err.Snippet "\\n" "%0A"}}%0A```\n{{end}}' -ignore 'SC2016:' -ignore 'SC2086:' ${{ inputs.options }}
         shell: bash
