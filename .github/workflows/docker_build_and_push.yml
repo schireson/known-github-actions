@@ -14,6 +14,11 @@ on:
         description: >
           The name of the environment to run on. This defaults to
           'ubuntu-latest'
+      login:
+        required: false
+        type: boolean
+        default: false
+        description: Whether to run `make docker-login`
       build:
         required: false
         type: boolean
@@ -58,13 +63,6 @@ jobs:
         uses: docker/setup-buildx-action@v2
       - name: Expose GitHub Runtime
         uses: crazy-max/ghaction-github-runtime@v2
-      - name: Build Docker Images
-        if: ${{ inputs.build }}
-        env:
-          POETRY_HTTP_BASIC_SCHIRESON_USERNAME: ${{ secrets.POETRY_HTTP_BASIC_SCHIRESON_USERNAME }}
-          POETRY_HTTP_BASIC_SCHIRESON_PASSWORD: ${{ secrets.POETRY_HTTP_BASIC_SCHIRESON_PASSWORD }}
-        run: |
-          make build
       - name: Configure ECR AWS Credentials
         if: ${{ inputs.runs-on != 'self-hosted' }}
         uses: aws-actions/configure-aws-credentials@v1
@@ -72,8 +70,21 @@ jobs:
           role-to-assume: ${{ secrets.ECR_PUSH_ROLE_ARN }}
           role-session-name: ${{ github.run_id }}
           aws-region: us-east-1
+
+      - name: ECR Login
+        if: ${{ inputs.login || inputs.push }}
+        run: |
+          make docker-login
+
+      - name: Build Docker Images
+        if: ${{ inputs.build }}
+        env:
+          POETRY_HTTP_BASIC_SCHIRESON_USERNAME: ${{ secrets.POETRY_HTTP_BASIC_SCHIRESON_USERNAME }}
+          POETRY_HTTP_BASIC_SCHIRESON_PASSWORD: ${{ secrets.POETRY_HTTP_BASIC_SCHIRESON_PASSWORD }}
+        run: |
+          make build
+
       - name: Push Docker Images
         if: ${{ inputs.push }}
         run: |
-          make docker-login
           make push
