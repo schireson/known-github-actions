@@ -64,7 +64,7 @@ jobs:
       - name: Expose GitHub Runtime
         uses: crazy-max/ghaction-github-runtime@v2
       - name: Configure ECR AWS Credentials
-        if: ${{ inputs.runs-on != 'self-hosted' }}
+        if: ${{ inputs.runs-on != 'self-hosted' && inputs.push }}
         uses: aws-actions/configure-aws-credentials@v1
         with:
           role-to-assume: ${{ secrets.ECR_PUSH_ROLE_ARN }}
