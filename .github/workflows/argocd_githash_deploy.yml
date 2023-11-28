@@ -98,13 +98,13 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         if: ${{ inputs.make-pr == false }}
         with:
           ref: ${{ inputs.argocd-branch }}
           fetch-depth: 0
           ssh-key: ${{ secrets.SSH_KEY }}
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         if: ${{ inputs.make-pr == true }}
         with:
           ref: ${{ inputs.argocd-branch }}
