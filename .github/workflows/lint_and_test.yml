@@ -78,7 +78,7 @@ jobs:
       matrix:
         python_version: ${{fromJson(inputs.python-versions)}}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v3
         id: setup-python
         with:

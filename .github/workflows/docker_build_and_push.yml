@@ -53,7 +53,7 @@ jobs:
     outputs:
       image-tag: ${{ steps.get-image-tag.outputs.image-tag }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Get image tag
         id: get-image-tag
         run: |
@@ -65,7 +65,7 @@ jobs:
         uses: crazy-max/ghaction-github-runtime@v2
       - name: Configure ECR AWS Credentials
         if: ${{ inputs.runs-on != 'self-hosted' && inputs.push }}
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.ECR_PUSH_ROLE_ARN }}
           role-session-name: ${{ github.run_id }}
