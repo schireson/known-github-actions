@@ -16,6 +16,11 @@ on:
           The python versions to utilize in workflow.
           Can be a json formatted list. Each python version will run
           in a github matrix.
+      fail-fast:
+        required: false
+        type: boolean
+        default: true
+        description: Whether to fail-fast the matrix
       test:
         required: false
         type: boolean
@@ -75,6 +80,7 @@ jobs:
           - 5432:5432
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     strategy:
+      fail-fast: ${{ inputs.fail-fast }}
       matrix:
         python_version: ${{fromJson(inputs.python-versions)}}
     steps:
