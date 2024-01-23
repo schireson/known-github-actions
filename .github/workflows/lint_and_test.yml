@@ -129,16 +129,6 @@ jobs:
         with:
           path: ${{ inputs.working-directory }}/coverage.xml
 
-      - name: Run coverage
-        if: ${{ inputs.coverage }}
-        env:
-          COVERALLS_FLAG_NAME: run-${{ inputs.working-directory }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COVERALLS_PARALLEL: true
-        run: |
-          pip install tomli coveralls
-          coveralls --service=github
-
       - name: Check python license
         if: ${{ inputs.check-python-license }}
         run: |
