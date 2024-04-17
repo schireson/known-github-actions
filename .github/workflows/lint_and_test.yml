@@ -99,13 +99,14 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
           installer-parallel: true
+          installation-arguments: --git https://github.com/python-poetry/poetry.git@5babd3876c32e8905c5cf9ccc74b091e7570f382
           
-      - name: Fix poetry
-        run: |
-          poetry self add keyrings.cryptfile@latest
-          poetry self add pkginfo==1.10.0
-          poetry cache clear pypi --all
-          poetry cache clear schireson --all
+      # - name: Fix poetry
+      #   run: |
+      #     poetry self add keyrings.cryptfile@latest
+      #     poetry self add pkginfo==1.10.0
+      #     poetry cache clear pypi --all
+      #     poetry cache clear schireson --all
 
       - name: Load cached venv
         uses: actions/cache@v4
