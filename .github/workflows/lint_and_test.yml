@@ -93,7 +93,7 @@ jobs:
           PYTHON_CONFIGURE_OPTS: --enable-shared --enable-optimizations
 
       - name: Install Poetry
-        uses: snok/install-poetry@v1
+        uses: snok/install-poetry@v1.3.4
         with:
           virtualenvs-create: true
           virtualenvs-in-project: true
