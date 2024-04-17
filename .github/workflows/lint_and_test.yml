@@ -102,8 +102,7 @@ jobs:
         run: |
           poetry self add keyrings.cryptfile@latest
           poetry self add pkginfo==1.10.0
-          poetry self lock
-          poetry self install
+          poetry cache clear pypi --all
 
       - name: Load cached venv
         uses: actions/cache@v4
