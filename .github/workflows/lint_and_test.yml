@@ -99,7 +99,9 @@ jobs:
           virtualenvs-in-project: true
           installer-parallel: true
       - name: Fix poetry
-        run: poetry self add pkginfo==1.10.0
+        run: |
+          poetry self add keyrings.cryptfile@latest
+          poetry self add pkginfo==1.10.0
       - name: Load cached venv
         uses: actions/cache@v4
         with:
