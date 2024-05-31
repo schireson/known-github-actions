@@ -35,6 +35,8 @@ jobs:
           ref: ${{ inputs.branch }}
           repository: ${{ inputs.config-repo }}
           ssh-key: ${{ secrets.SSH_KEY }}
+          sparse-checkout: ${{ inputs.config-file }}
+          sparse-checkout-cone-mode: false
       - name: update-workflow
         run: |
           yq -i '.${{ inputs.config-key }}.tag = "${{ inputs.docker-image-tag }}"' ${{ inputs.config-file }}
