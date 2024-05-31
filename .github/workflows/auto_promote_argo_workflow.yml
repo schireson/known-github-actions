@@ -1,0 +1,45 @@
+name: Auto Promote Argo Workflow
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        required: false
+        type: string
+        default: ubuntu-latest
+      config-repo:
+        required: true
+        type: string
+      config-file:
+        required: true
+        type: string
+      config-key:
+        required: true
+        type: string
+      branch:
+        required: false
+        type: string
+        default: main
+      docker-image-tag:
+        required: true
+        type: string
+    secrets:
+      SSH_KEY:
+        required: true
+jobs:
+  deploy:
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - name: checkout-config-repo
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.branch }}
+          repository: ${{ inputs.config-repo }}
+          ssh-key: ${{ secrets.SSH_KEY }}
+      - name: update-workflow
+        run: |
+          yq -i '.${{ inputs.config-key }}.tag = "${{ inputs.docker-image-tag }}"' ${{ inputs.config-file }}
+          git config user.name github-service-known
+          git config user.email github.service@known.is
+          git add ${{ inputs.config-file }}
+          git commit -m "deploy ${{ inputs.config-key }} to ${{ inputs.docker-image-tag }}"
+          git push origin ${{ inputs.branch }}
