@@ -139,6 +139,9 @@ jobs:
         with:
           path: ${{ inputs.working-directory }}/coverage.xml
 
-      - name: Check python license
-        if: ${{ inputs.check-python-license }}
-        uses: ./.github/workflows/template_lint_and_test.yml
+      - name: check-python-licenses
+        uses: schireson/known-github-actions/.github/workflows/check_python_license.yml@main
+        with:
+          python-version: ${{ matrix.python_version }}
+          runs-on: ${{ inputs.runs-on }}
+          working-directory: ${{ inputs.working-directory }}

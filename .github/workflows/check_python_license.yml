@@ -10,19 +10,25 @@ on:
         description: >
           The name of the environment to run on. This defaults to
           'ubuntu-latest'
-      python-versions:
+      working-directory:
+        required: true
+        type: string
+        description: >
+          The sub-directory to run commands out of
+      python-version:
         required: false
         type: string
-        default: >-
-          ["3.11.5"]
+        default: "3.11.5"
         description: >
-          The python versions to utilize in workflow.
-          Can be a json formatted list. Each python version will run
-          in a github matrix.
+          The python version to utilize in workflow.
 
 jobs:
   check-python-licenses:
     runs-on: ${{ inputs.runs-on }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ inputs.working-directory }}
     steps:
       - uses: actions/checkout@v4
 
