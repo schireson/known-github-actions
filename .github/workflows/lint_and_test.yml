@@ -139,6 +139,48 @@ jobs:
         with:
           path: ${{ inputs.working-directory }}/coverage.xml
 
-      - name: check-python-licenses
+      - name: Check python license
         if: ${{ inputs.check-python-license }}
-        uses: .github/actions/check_python_license
+        run: |
+          pip install pip-licenses
+
+          wget -O jq https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
+          chmod +x ./jq
+          sudo cp jq /usr/bin
+
+          output=$(pip-licenses -f json --with-authors | jq '
+            .[]
+            | select(
+                .License
+                | contains("MIT")
+                  or contains("BSD")
+                  or contains("Apache")
+                  or contains("LGPL")
+                  or contains("Artistic License")
+                  or contains("HPND")
+                  or contains("ISCL")
+                  or contains("MPL 2.0")
+                  or contains("Public Domain")
+                  or contains("WTFPL")
+                  or contains("Zope Public")
+                  or contains("Python Software Foundation")
+                | not
+              )
+            | select (
+                .Name
+                | startswith("ma-")
+                or startswith("media-activation-")
+                or IN("strapp")  # Internal packages
+                or IN("ptpython")  # Improperly identified packages
+                | not
+              )
+            | select (.Author == "Known" | not)
+            ')
+          if [[ $output = "" ]]; then
+            echo 'No violations!'
+          else
+            echo "$output" | jq
+            echo "Please read our Open-Source Software License Policy on your VPN"
+            echo https://engineering.docs.known.is/engineering/open-source-software-license-policy/
+            exit 1
+          fi
