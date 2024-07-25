@@ -44,4 +44,10 @@ jobs:
           git config user.email github.service@known.is
           git add ${{ inputs.config-file }}
           git commit -m "deploy ${{ inputs.config-key }} to ${{ inputs.docker-image-tag }}"
-          git push origin ${{ inputs.branch }}
+      - name: Push to ${{ inputs.branch }}
+        uses: nick-fields/retry@v3
+        with:
+          timeout_seconds: 10
+          max_attempts: 3
+          retry_on: error
+          command: git pull --rebase origin ${{ inputs.branch }} && git push origin ${{ inputs.branch }}
