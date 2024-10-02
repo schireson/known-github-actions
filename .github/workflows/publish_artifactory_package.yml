@@ -53,6 +53,7 @@ jobs:
           key: venv-${{ runner.os }}-${{ inputs.runs-on }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
       - name: Publish Client
         env:
+          POETRY_REPOSITORIES_PUBLISH_URL: ${{ secrets.POETRY_REPOSITORIES_PUBLISH_URL }}
           POETRY_HTTP_BASIC_SCHIRESON_USERNAME: ${{ secrets.POETRY_HTTP_BASIC_SCHIRESON_USERNAME }}
           POETRY_HTTP_BASIC_SCHIRESON_PASSWORD: ${{ secrets.POETRY_HTTP_BASIC_SCHIRESON_PASSWORD }}
         run: make publish
