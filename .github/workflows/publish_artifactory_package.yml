@@ -26,7 +26,7 @@ on:
       POETRY_HTTP_BASIC_SCHIRESON_PASSWORD:
         required: true
       POETRY_REPOSITORIES_PUBLISH_URL:
-        required: true
+        required: false
 jobs:
   publish:
     runs-on: ${{ inputs.runs-on }}
