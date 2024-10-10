@@ -25,6 +25,10 @@ on:
         required: true
       POETRY_HTTP_BASIC_SCHIRESON_PASSWORD:
         required: true
+      POETRY_HTTP_BASIC_KNOWN_USERNAME:
+        required: false
+      POETRY_HTTP_BASIC_KNOWN_PASSWORD:
+        required: false
 jobs:
   publish:
     runs-on: ${{ inputs.runs-on }}
@@ -53,11 +57,11 @@ jobs:
           key: venv-${{ runner.os }}-${{ inputs.runs-on }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
       - name: Publish to Artifactory
         env:
-          POETRY_REPOSITORIES_SCHIRESON_URL: https://artifactory.schireson.com/artifactory/api/pypi/pypi
-          POETRY_HTTP_BASIC_SCHIRESON_USERNAME: ${{ secrets.POETRY_HTTP_BASIC_SCHIRESON_USERNAME }}
-          POETRY_HTTP_BASIC_SCHIRESON_PASSWORD: ${{ secrets.POETRY_HTTP_BASIC_SCHIRESON_PASSWORD }}
+          POETRY_REPOSITORIES_PUBLISH_URL: ${{ secrets.POETRY_REPOSITORIES_PUBLISH_URL }}
+          POETRY_HTTP_BASIC_KNOWN_USERNAME: ${{ secrets.POETRY_HTTP_BASIC_KNOWN_USERNAME }}
+          POETRY_HTTP_BASIC_KNOWN_PASSWORD: ${{ secrets.POETRY_HTTP_BASIC_KNOWN_PASSWORD }}
         run: |
           poetry build
-          poetry publish -n --repository schireson 2>&1 | tee publish.log || true
+          poetry publish -n --repository known 2>&1 | tee publish.log || true
           OUTPUT=$(tail -n 1 publish.log)
           grep -vq 'HTTP Error' <<< $OUTPUT || grep -q 'HTTP Error 404' <<< $OUTPUT || grep -q 'HTTP Error 400' <<< $OUTPUT
