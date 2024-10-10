@@ -56,8 +56,8 @@ jobs:
       - name: Publish to Artifactory
         env:
           POETRY_REPOSITORIES_PUBLISH_URL: ${{ secrets.POETRY_REPOSITORIES_PUBLISH_URL }}
-          POETRY_HTTP_BASIC_KNOWN_USERNAME: ${{ secrets.POETRY_HTTP_BASIC_KNOWN_USERNAME }}
-          POETRY_HTTP_BASIC_KNOWN_PASSWORD: ${{ secrets.POETRY_HTTP_BASIC_KNOWN_PASSWORD }}
+          POETRY_HTTP_BASIC_PUBLISH_USERNAME: ${{ secrets.POETRY_HTTP_BASIC_KNOWN_USERNAME }}
+          POETRY_HTTP_BASIC_PUBLISH_PASSWORD: ${{ secrets.POETRY_HTTP_BASIC_KNOWN_PASSWORD }}
         run: |
           poetry build
           poetry publish -n --repository publish 2>&1 | tee publish.log || true
