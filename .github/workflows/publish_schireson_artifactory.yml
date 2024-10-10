@@ -60,6 +60,6 @@ jobs:
           POETRY_HTTP_BASIC_KNOWN_PASSWORD: ${{ secrets.POETRY_HTTP_BASIC_KNOWN_PASSWORD }}
         run: |
           poetry build
-          poetry publish -n --repository known 2>&1 | tee publish.log || true
+          poetry publish -n --repository publish 2>&1 | tee publish.log || true
           OUTPUT=$(tail -n 1 publish.log)
           grep -vq 'HTTP Error' <<< $OUTPUT || grep -q 'HTTP Error 404' <<< $OUTPUT || grep -q 'HTTP Error 400' <<< $OUTPUT
