@@ -21,14 +21,12 @@ on:
           The name of the environment to run on. This defaults to
           'ubuntu-latest'
     secrets:
-      POETRY_HTTP_BASIC_SCHIRESON_USERNAME:
-        required: true
-      POETRY_HTTP_BASIC_SCHIRESON_PASSWORD:
+      POETRY_REPOSITORIES_PUBLISH_URL:
         required: true
       POETRY_HTTP_BASIC_KNOWN_USERNAME:
-        required: false
+        required: true
       POETRY_HTTP_BASIC_KNOWN_PASSWORD:
-        required: false
+        required: true
 jobs:
   publish:
     runs-on: ${{ inputs.runs-on }}
