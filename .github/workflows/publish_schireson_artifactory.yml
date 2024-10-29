@@ -62,4 +62,4 @@ jobs:
           poetry build
           poetry publish -n --repository publish 2>&1 | tee publish.log || true
           OUTPUT=$(tail -n 1 publish.log)
-          grep -vq 'HTTP Error' <<< $OUTPUT || grep -q 'HTTP Error 404' <<< $OUTPUT || grep -q 'HTTP Error 400' <<< $OUTPUT
+          grep -vq 'HTTP Error' <<< $OUTPUT || grep -q 'HTTP Error 404' <<< $OUTPUT || grep -q 'HTTP Error 409' <<< $OUTPUT
