@@ -141,7 +141,7 @@ jobs:
           COVERAGE_PROCESS_START: pyproject.toml
       - name: Store test result artifacts
         if: ${{ inputs.test && inputs.coverage }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           path: ${{ inputs.working-directory }}/coverage.xml
 
