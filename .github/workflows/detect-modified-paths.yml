@@ -14,6 +14,11 @@ on:
         description: |
           Newline-delimited list of files which cause all paths to be considered modified.
 
+      force-all:
+        type: string
+        description: Whether to force all paths to be considered modified.
+        default: "false"
+
     outputs:
       path:
         description: List of paths that have been modified
@@ -58,7 +63,7 @@ jobs:
       - name: Generate path matrix
         id: generate-modified-path-matrix
         run: |
-          if [ "${{ needs.modified-sentinels.outputs.any }}" = "true" ]; then
+          if [ "${{ needs.modified-sentinels.outputs.any }}" = "true" ] || [ "${{ inputs.force-all }}" = "true" ]; then
             all_paths=$(jq -c -n '$ARGS.positional' --args $(ls apps))
             echo "path=$all_paths" >> "$GITHUB_OUTPUT"
           else
