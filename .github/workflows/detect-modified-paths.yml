@@ -64,7 +64,7 @@ jobs:
         id: generate-modified-path-matrix
         run: |
           if [ "${{ needs.modified-sentinels.outputs.any }}" = "true" ] || [ "${{ inputs.force-all }}" = "true" ]; then
-            all_paths=$(jq -c -n '$ARGS.positional' --args $(ls apps))
+            all_paths=$(jq -c -n '$ARGS.positional' --args $(ls ${{ inputs.root-path }}))
             echo "path=$all_paths" >> "$GITHUB_OUTPUT"
           else
             path=$(echo '${{ needs.modified-paths.outputs.path }}' | jq -c 'map(select(. | test("^${{ inputs.root-path }}/"))) | map(sub("^${{ inputs.root-path }}/"; ""))')
