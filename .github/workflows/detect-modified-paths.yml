@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       modified: ${{ steps.modified-dirs.outputs.all_changed_files }}
-      any: ${{ steps.modified-dirs.outputs.all_changed_files_count != '0' }}
+      any: ${{ steps.modified-dirs.outputs.any_changed }}
     steps:
       - uses: actions/checkout@v4
       - uses: tj-actions/changed-files@v44
@@ -65,7 +65,7 @@ jobs:
         working-directory: ${{ inputs.root-path }}
         run: |
           if [ "${{ needs.modified-sentinels.outputs.any }}" = "true" ] || [ "${{ inputs.force-all }}" = "true" ]; then
-            all_paths=$(jq -c -n '$ARGS.positional' --args $(find * -maxdepth 0 -type d))
+            all_paths=$(jq -c -n '$ARGS.positional' --args "$(find ./* -maxdepth 0 -type d)")
             echo "path=$all_paths" >> "$GITHUB_OUTPUT"
           else
             path=$(echo '${{ needs.modified-paths.outputs.path }}' | jq -c 'map(select(. | test("^${{ inputs.root-path }}/"))) | map(sub("^${{ inputs.root-path }}/"; ""))')
