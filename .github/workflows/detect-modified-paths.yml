@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       modified: ${{ steps.modified-dirs.outputs.all_changed_files }}
-      any: ${{ steps.modified-dirs.outputs.any_changed }}
+      any: ${{ steps.modified-dirs.outputs.all_changed_files_count != '0' }}
     steps:
       - uses: actions/checkout@v4
       - uses: tj-actions/changed-files@v44
