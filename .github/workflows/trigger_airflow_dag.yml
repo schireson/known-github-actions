@@ -78,7 +78,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         repository: 'schireson/known-github-actions'
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@v5
       id: setup-python
       with:
         python-version: ${{ inputs.python-version }}
