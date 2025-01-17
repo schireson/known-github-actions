@@ -63,7 +63,7 @@ jobs:
         id: generate-modified-path-matrix
         working-directory: ${{ inputs.root-path }}
         run: |
-          if ([ "${{ inputs.sentinel-paths }}" ] && [ "${{ needs.modified-sentinels.outputs.modified }}" != "[]" ]) || [ "${{ inputs.force-all }}" = "true" ]; then
+          if ([ "${{ inputs.sentinel-paths }}" ] && [ "${{ needs.modified-sentinels.outputs.modified }}" != "" ]) || [ "${{ inputs.force-all }}" = "true" ]; then
             all_paths=$(jq -c -n '$ARGS.positional' --args "$(find ./* -maxdepth 0 -type d)")
             echo "path=$all_paths" >> "$GITHUB_OUTPUT"
           else
