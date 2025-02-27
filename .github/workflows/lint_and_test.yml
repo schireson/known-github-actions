@@ -143,7 +143,7 @@ jobs:
         if: ${{ inputs.test && inputs.coverage }}
         uses: actions/upload-artifact@v4
         with:
-          path: ${{ inputs.working-directory }}/coverage.xml
+          path: ${{ inputs.working-directory }}/${{ matrix.python_version }}-coverage.xml
 
       - name: Check python license
         if: ${{ inputs.check-python-license }}
