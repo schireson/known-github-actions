@@ -39,7 +39,7 @@ jobs:
           sparse-checkout-cone-mode: false
       - name: update-workflow
         run: |
-          yq -i '.${{ inputs.config-key }}.tag = "${{ inputs.docker-image-tag }}"' ${{ inputs.config-file }}
+          yq -i '.${{ inputs.config-key }}.tag = "${{ inputs.docker-image-tag }}" | sort_keys(..) | .*.tag style="double"' ${{ inputs.config-file }}
           git config user.name github-service-known
           git config user.email github.service@known.is
           git add ${{ inputs.config-file }}
